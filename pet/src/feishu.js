@@ -21,6 +21,13 @@ class NeedsAuthError extends Error {
   }
 }
 
+// lark-cli is installed but this user has not created their own CLI app yet.
+class NeedsConfigError extends Error {
+  constructor() {
+    super('lark-cli 还没有配置');
+  }
+}
+
 // Apps launched from Finder get a minimal PATH, so look in the usual install locations too.
 function larkCliPath() {
   const dirs = [...(process.env.PATH || '').split(':'), ...SEARCH_DIRS];
@@ -28,7 +35,7 @@ function larkCliPath() {
     const p = path.join(dir, 'lark-cli');
     if (dir && fs.existsSync(p)) return p;
   }
-  throw new Error('没找到 lark-cli，请先安装飞书 CLI（npm i -g @larksuite/cli）');
+  throw new Error('没找到 lark-cli，请先安装飞书 CLI：npm install -g @larksuite/cli，再运行 lark-cli config init --new');
 }
 
 function runLark(args) {
@@ -44,6 +51,7 @@ function runLark(args) {
       if (out.ok) return resolve(out.data);
       const e = out.error || {};
       if (e.subtype === 'missing_scope' && Array.isArray(e.missing_scopes)) return reject(new NeedsAuthError(e.missing_scopes));
+      if (e.type === 'config' && e.subtype === 'not_configured') return reject(new NeedsConfigError());
       reject(new Error(e.message || 'lark-cli 调用失败'));
     });
   });
@@ -173,4 +181,26 @@ async function authorize(scopes) {
   });
 }
 
-module.exports = { run, isAction, authorize, NeedsAuthError, SCOPES, formatAgenda, formatTasks };
+// First-time setup: `lark-cli config init --new` creates the user's own CLI app in the browser.
+// It blocks until the user finishes; the verification URL is taken from its output and opened.
+function configure() {
+  return new Promise((resolve, reject) => {
+    const child = spawn(larkCliPath(), ['config', 'init', '--new'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let opened = false;
+    const watch = chunk => {
+      const url = String(chunk).match(/https:\/\/\S+/)?.[0];
+      if (url && !opened) {
+        opened = true;
+        shell.openExternal(url.replace(/[)"'，。]+$/, ''));
+      }
+    };
+    child.stdout.on('data', watch);
+    child.stderr.on('data', watch);
+    child.on('error', reject);
+    child.on('exit', code => (code === 0 ? resolve() : reject(new Error('没有完成 lark-cli 配置'))));
+  });
+}
+
+module.exports = {
+  run, isAction, authorize, configure, NeedsAuthError, NeedsConfigError, SCOPES, formatAgenda, formatTasks,
+};

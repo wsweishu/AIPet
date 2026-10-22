@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const DEFAULTS = {
-  mode: 'key', // 'key' | 'login'
+  mode: 'login', // 'login' (Feishu sign-in to the Miaoda app, default) | 'key' (per-person API key)
   baseUrl: '',
   apiKey: '',
   userName: '',

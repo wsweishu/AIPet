@@ -130,15 +130,17 @@ ipcMain.on('pet:menu', () => {
   ]).popup({ window: petWin });
 });
 
-let authorizing = null; // pending lark-cli device login, so repeated questions don't open many tabs
+let authorizing = null; // pending lark-cli browser flow, so repeated questions don't open many tabs
 
-function startAuthorize(scopes) {
+function startBrowserFlow(run, doneText) {
   if (authorizing) return;
-  authorizing = feishu.authorize(scopes)
-    .then(() => notifyPet('pet:status', { text: '飞书授权好啦！再问我一次吧～', mood: 'happy' }))
-    .catch(err => notifyPet('pet:status', { text: `授权没完成：${err.message}`, mood: 'error' }))
+  authorizing = run()
+    .then(() => notifyPet('pet:status', { text: doneText, mood: 'happy' }))
+    .catch(err => notifyPet('pet:status', { text: `没完成：${err.message}`, mood: 'error' }))
     .finally(() => { authorizing = null; });
 }
+const startAuthorize = scopes => startBrowserFlow(() => feishu.authorize(scopes), '飞书授权好啦！再问我一次吧～');
+const startConfigure = () => startBrowserFlow(() => feishu.configure(), 'lark-cli 配置好啦！再问我一次，我会接着申请查看权限～');
 
 // One turn: Doubao picks a read-only Feishu action (if any) → lark-cli runs it here →
 // Doubao answers grounded on the result, streamed back to the pet.
@@ -164,6 +166,11 @@ ipcMain.handle('chat:send', async (e, { id, message, history }) => {
         if (err instanceof feishu.NeedsAuthError) {
           startAuthorize(err.scopes);
           send('chat:error', { message: '肥鱼还没有查看你飞书的权限，我打开了授权页，点「同意」后再问我一次～', auth: true });
+          return;
+        }
+        if (err instanceof feishu.NeedsConfigError) {
+          startConfigure();
+          send('chat:error', { message: '你的 lark-cli 还没配置，我打开了创建 CLI 应用的页面，按提示完成后再问我一次～', auth: true });
           return;
         }
         toolResult = `查询失败：${err.message}`;
@@ -249,7 +256,23 @@ app.whenReady().then(() => {
   }
   createPet();
   if (SELFTEST) selftest();
-  else if (!currentConfig().baseUrl || (currentConfig().mode === 'key' && !config.load().apiKey)) openSettings();
+  else firstRunCheck();
 });
+
+// Opens settings until the pet can reach its brain: an address plus a Feishu login (or an API key).
+async function firstRunCheck() {
+  const cfg = currentConfig();
+  if (!cfg.baseUrl || (cfg.mode === 'key' && !config.load().apiKey)) return openSettings();
+  if (cfg.mode === 'login') {
+    const user = await brain.whoami(cfg).catch(() => null);
+    if (user?.userName) {
+      if (user.userName !== cfg.userName) config.save({ userName: user.userName });
+      notifyPet('pet:status', { text: `${user.userName}，本鲸上班啦～`, mood: 'happy' });
+    } else {
+      openSettings();
+      notifyPet('pet:status', { text: '先在设置里用飞书登录一下吧～', mood: 'listening' });
+    }
+  }
+}
 
 app.on('window-all-closed', () => app.quit());

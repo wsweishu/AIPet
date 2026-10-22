@@ -51,6 +51,18 @@ export interface PetChatResponse {
   elapsedMs: number;
 }
 
+/** POST /api/pet/claim 响应：领取肥鱼后拿到的下载信息 */
+export interface PetClaimResponse {
+  /** 领取人姓名 */
+  userName: string;
+  /** 桌宠安装包下载地址 */
+  downloadUrl: string;
+  /** 桌宠里要填的妙搭应用地址（本应用的线上地址） */
+  appUrl: string;
+  /** 首次查飞书时 lark-cli 会申请的权限 */
+  scopes: string[];
+}
+
 /** GET /api/pet/me 响应：当前飞书登录用户 */
 export interface PetMeResponse {
   /** 妙搭用户 ID */

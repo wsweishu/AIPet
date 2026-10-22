@@ -23,34 +23,34 @@
 | [`miaoda-bridge/`](miaoda-bridge/) | 妙搭应用的后端代码与部署步骤（插件实例、接口、OpenAPI 文档） |
 | [`scripts/`](scripts/) | `issue-key.mjs` 给每人发妙搭 API Key；`miaoda-chat.mjs` 命令行测试对话；`aily-chat.mjs` 调飞书 aily 智能体（目前飞书未开放该接口，返回 10006） |
 
-## 快速开始
+## 使用流程
 
-1. **部署大脑**：按 [`miaoda-bridge/README.md`](miaoda-bridge/README.md) 在你的飞书租户里建一个妙搭全栈应用并发布。
-2. **准备 lark-cli**：安装 [lark-cli](https://github.com/larksuite/cli) 并完成 `lark-cli config init` 与 `lark-cli auth login`。第一次问日程或待办时，桌宠会自动打开授权页，申请 `calendar:calendar.event:read`、`task:task:read`。
-3. **发 Key**：新建 `.aipet/miaoda.env`（已被 git 忽略），然后运行 `node scripts/issue-key.mjs <姓名>`，会生成 `.aipet/keys/<姓名>.env`：
+**管理员（每个公司做一次）**：按 [`miaoda-bridge/README.md`](miaoda-bridge/README.md) 在你们的飞书里部署妙搭应用，并把可见范围设为全公司。
 
-   ```
-   MIAODA_APP_ID=app_xxxx
-   MIAODA_BASE_URL=https://<你的租户>.feishu.link/app/app_xxxx
-   ```
+**同事**：
+1. 打开妙搭应用，用飞书登录，点「领取肥鱼」，拿到下载链接和安装步骤。
+2. 下载安装（[Releases](https://github.com/wsweishu/AIPet/releases)）。应用没有签名，第一次打开要右键选「打开」。
+3. 在肥鱼的设置里选「飞书登录」，填入领取页上显示的妙搭地址，完成飞书登录。不需要 API Key。
+4. 安装 lark-cli，并创建**你自己的** CLI 应用：`npm install -g @larksuite/cli`，再运行 `lark-cli config init --new`。如果还没配置，肥鱼第一次查飞书时也会自动打开这个页面。
+5. 第一次问「今天有什么会」时，肥鱼会打开授权页，申请 `calendar:calendar.event:read`、`task:task:read`。如果提示需要管理员审批，等批完再问一次。
 
-4. **跑桌宠**：
+## 开发
 
-   ```bash
-   cd pet
-   npm install
-   npm start              # 首次会打开设置：导入 Key 文件，或选「飞书登录」
-   npm run package        # 打包 macOS（Apple 芯片）应用到 pet/dist/
-   ```
+```bash
+cd pet
+npm install
+npm start              # 开发运行
+npm run package        # 打包 macOS（Apple 芯片）应用到 pet/dist/
+```
 
-`pet/pet.defaults.json` 可以填上默认的妙搭地址，省掉每个人手动输入。
+`pet/pet.defaults.json` 可以填上默认的妙搭地址，自己打包分发时就不用每个人手动输入了。调试时也可以用 API Key：在 `.aipet/miaoda.env`（已被 git 忽略）里写好 `MIAODA_APP_ID` 和 `MIAODA_BASE_URL`，再运行 `node scripts/issue-key.mjs <姓名>`。
 
 ## 安全设计
 
 - 豆包只决定做什么；真正执行的是本机的 lark-cli，而且只执行白名单里的两个只读动作（查某天日程、查未完成待办）。日期必须是 `YYYY-MM-DD`，命令不经过 shell。
 - 模型输出，以及会被拼进提示词的会议标题、消息内容，都当作不可信输入，所以写操作一律不会执行。
 - 你的飞书凭证只留在本机钥匙串里。发给妙搭的只有你说的话、最近 10 轮对话和精简后的查询结果。
-- API Key 每人一把，只能调对话相关的两个接口，可以在妙搭里单独停用。
+- 默认用每个人自己的飞书登录访问妙搭，不发 API Key；lark-cli 也是每人用自己的 CLI 应用，权限各自授权，互不共用。
 
 ## 许可
 

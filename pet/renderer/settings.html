@@ -9,17 +9,17 @@
 <body>
   <main>
     <h1>肥鱼的大脑</h1>
-    <p class="lead">肥鱼通过你们公司的妙搭应用调用豆包。选一种连接方式：</p>
+    <p class="lead">肥鱼通过你们公司的妙搭应用调用豆包。妙搭地址在领取肥鱼的页面上可以复制。</p>
 
     <fieldset>
       <legend>连接方式</legend>
       <label class="option">
-        <input type="radio" name="mode" value="key">
-        <span><b>API Key</b><small>管理员用 issue-key.mjs 给每人发一把，妙搭后台可看、可停用</small></span>
+        <input type="radio" name="mode" value="login">
+        <span><b>飞书登录（推荐）</b><small>用你自己的飞书身份登录妙搭应用，不需要 Key</small></span>
       </label>
       <label class="option">
-        <input type="radio" name="mode" value="login">
-        <span><b>飞书登录</b><small>用你自己的飞书身份，肥鱼会认识你是谁</small></span>
+        <input type="radio" name="mode" value="key">
+        <span><b>API Key</b><small>管理员用 issue-key.mjs 发放，适合调试或无法登录时</small></span>
       </label>
     </fieldset>
 
