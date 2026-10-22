@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>loading</title><style>
+html,body{margin:0;width:1024px;height:1024px;background:transparent}
+video{display:none}
+canvas{position:absolute;left:0;top:0}
+</style></head><body>
+<video id="v" muted src="whalechan/idle.webm"></video>
+<canvas id="c" width="1024" height="1024"></canvas>
+<script>
+// Draws one frame of the idle clip onto a rounded tile; the video element itself is never shown,
+// so the page keeps a transparent background for the capture.
+const v = document.getElementById('v');
+const ctx = document.getElementById('c').getContext('2d');
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+v.addEventListener('loadedmetadata', () => { v.currentTime = 1.2; });
+v.addEventListener('seeked', () => {
+  ctx.save();
+  ctx.shadowColor = 'rgba(40,60,160,.25)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 18;
+  roundRect(100, 100, 824, 824, 180);
+  const g = ctx.createLinearGradient(100, 100, 924, 924);
+  g.addColorStop(0, '#eef3ff'); g.addColorStop(1, '#c9d8ff');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.restore();
+  ctx.save();
+  roundRect(100, 100, 824, 824, 180);
+  ctx.clip();
+  // source character spans about x 196-432, y 60-329 of 640x360; scale 2.9 and centre it on the tile
+  const s = 2.9;
+  ctx.drawImage(v, 512 - 314 * s, 560 - 195 * s, 640 * s, 360 * s);
+  ctx.restore();
+  document.title = 'ready';
+});
+</script>
+</body></html>

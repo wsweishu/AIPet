@@ -1,0 +1,151 @@
+:root {
+  --ink: #1b2a6b;
+  --bubble-bg: rgba(255, 255, 255, 0.96);
+  --bubble-border: #c9d6ff;
+  --accent: #4d6bfe;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- speech bubble ---------- */
+#bubble {
+  position: absolute;
+  bottom: 318px;
+  left: 14px;
+  right: 14px;
+  max-height: 170px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--bubble-bg);
+  border: 1.5px solid var(--bubble-border);
+  box-shadow: 0 6px 18px rgba(40, 60, 160, 0.18);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: pop 0.18s ease-out;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  margin-left: 10px;
+  border: 9px solid transparent;
+  border-bottom: 0;
+  border-top-color: var(--bubble-bg);
+  filter: drop-shadow(0 1.5px 0 var(--bubble-border));
+}
+#bubble.error { border-color: #ffb3b3; color: #a12a2a; }
+#bubble .cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: blink-cursor 0.8s steps(2) infinite;
+}
+@keyframes pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes blink-cursor { 50% { opacity: 0; } }
+
+/* ---------- the whale-girl ----------
+   Clips are 640x360 with the character inside roughly x 160-450, y 12-337, so the 512x288 video is
+   shifted left to crop the empty sides; the box below is what takes the mouse. */
+#fish {
+  position: relative;
+  width: 256px;
+  height: 272px;
+  cursor: grab;
+}
+#fish:active { cursor: grabbing; }
+.clip { position: absolute; inset: 0; overflow: hidden; }
+.clip video {
+  position: absolute;
+  left: -124px;
+  top: -6px;
+  width: 512px;
+  height: 288px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+.clip video.on { opacity: 1; }
+
+/* working: digging through Feishu — a badge bounces over the head */
+.badge { position: absolute; left: 70px; top: 0; z-index: 2; font-size: 26px; opacity: 0; pointer-events: none; }
+.mood-working .badge { opacity: 1; animation: badge-bounce 0.7s ease-in-out infinite; }
+@keyframes badge-bounce { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(6deg); } }
+
+/* ---------- composer ---------- */
+#composer {
+  display: flex;
+  gap: 6px;
+  width: 266px;
+  margin-top: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--bubble-bg);
+  border: 1.5px solid var(--bubble-border);
+  box-shadow: 0 4px 14px rgba(40, 60, 160, 0.16);
+  animation: pop 0.15s ease-out;
+}
+#input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: var(--ink);
+  user-select: text;
+  -webkit-user-select: text;
+}
+#input::placeholder { color: #8a97c9; }
+#composer button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#composer button:disabled { background: #b5c2ff; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "aipet-fatfish",
+  "productName": "AIPet 肥鱼",
+  "version": "0.1.0",
+  "description": "开源 AI 桌宠：一条住在桌面上的蓝色大肥鱼，大脑是飞书妙搭里的豆包",
+  "main": "src/main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "selftest": "AIPET_SELFTEST=1 electron .",
+    "package": "electron-packager . \"AIPet 肥鱼\" --platform=darwin --arch=arm64 --out=dist --overwrite --icon=assets/icon.icns --app-bundle-id=dev.aipet.fatfish --ignore=^/dist"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "38.8.6"
+  }
+}

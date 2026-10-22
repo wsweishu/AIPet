@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; media-src 'self'">
+  <title>AIPet 肥鱼</title>
+  <link rel="stylesheet" href="pet.css">
+</head>
+<body>
+  <div id="stage" class="mood-idle">
+    <div id="bubble" class="hidden" role="status" aria-live="polite"><span id="bubble-text"></span></div>
+
+    <div id="fish" title="点我聊天，拖我搬家，右键看菜单">
+      <div id="badge" class="badge" aria-hidden="true"></div>
+      <!-- Whale-girl animations from PC2005-cloud/dsh-pet (non-commercial; see assets/whalechan/CREDITS.md).
+           Two layers so the next clip can load before it is shown. -->
+      <div class="clip" role="img" aria-label="蓝色大肥鱼鲸鱼娘">
+        <video id="clip-a" muted playsinline preload="auto"></video>
+        <video id="clip-b" muted playsinline preload="auto"></video>
+      </div>
+    </div>
+
+    <form id="composer" class="hidden" autocomplete="off">
+      <input id="input" type="text" maxlength="500" placeholder="跟肥鱼说点什么…（回车发送）" aria-label="对肥鱼说的话">
+      <button type="submit" aria-label="发送">↑</button>
+    </form>
+  </div>
+  <script src="pet.js"></script>
+</body>
+</html>

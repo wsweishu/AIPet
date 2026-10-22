@@ -1,0 +1,12 @@
+# secrets: Miaoda API keys and app config
+.aipet/
+
+# the local Miaoda app checkout (platform scaffold + tenant config); its own source lives in miaoda-bridge/
+experiments/
+
+# dependencies and build output
+node_modules/
+pet/dist/
+
+.DS_Store
+*.log

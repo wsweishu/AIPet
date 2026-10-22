@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <title>AIPet 肥鱼 · 设置</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <main>
+    <h1>肥鱼的大脑</h1>
+    <p class="lead">肥鱼通过你们公司的妙搭应用调用豆包。选一种连接方式：</p>
+
+    <fieldset>
+      <legend>连接方式</legend>
+      <label class="option">
+        <input type="radio" name="mode" value="key">
+        <span><b>API Key</b><small>管理员用 issue-key.mjs 给每人发一把，妙搭后台可看、可停用</small></span>
+      </label>
+      <label class="option">
+        <input type="radio" name="mode" value="login">
+        <span><b>飞书登录</b><small>用你自己的飞书身份，肥鱼会认识你是谁</small></span>
+      </label>
+    </fieldset>
+
+    <label class="field">
+      <span>妙搭应用地址</span>
+      <input id="baseUrl" type="url" placeholder="https://xxxx.feishu.link/app/app_xxxx" spellcheck="false">
+    </label>
+
+    <section id="key-section">
+      <label class="field">
+        <span>你的称呼</span>
+        <input id="userName" type="text" maxlength="40" placeholder="肥鱼会这样叫你">
+      </label>
+      <div class="field">
+        <span>API Key <em id="keyPreview"></em></span>
+        <div class="row">
+          <input id="apiKey" type="password" placeholder="粘贴新的 Key（留空则不修改）" autocomplete="off" spellcheck="false">
+          <button id="import" type="button" class="secondary">导入 Key 文件…</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="login-section">
+      <div class="field">
+        <span>飞书账号</span>
+        <div class="row">
+          <output id="who">未登录</output>
+          <button id="login" type="button" class="secondary">飞书登录…</button>
+          <button id="logout" type="button" class="link">退出</button>
+        </div>
+      </div>
+    </section>
+
+    <p id="msg" role="status"></p>
+    <div class="actions"><button id="save" type="button">保存</button></div>
+  </main>
+  <script src="settings.js"></script>
+</body>
+</html>

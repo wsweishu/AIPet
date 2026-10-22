@@ -1,0 +1,51 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f8ff;
+  --card: #ffffff;
+  --ink: #1b2a6b;
+  --muted: #6a76a8;
+  --line: #d6def8;
+  --accent: #4d6bfe;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14182b; --card: #1d2240; --ink: #e5e9ff; --muted: #9aa5d6; --line: #323a66; --accent: #7d93ff; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 -apple-system, "PingFang SC", sans-serif;
+}
+main { padding: 22px 24px; }
+h1 { margin: 0 0 4px; font-size: 20px; }
+.lead { margin: 0 0 16px; color: var(--muted); }
+fieldset { border: 0; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
+legend { font-weight: 600; margin-bottom: 8px; }
+.option {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer;
+}
+.option:has(input:checked) { border-color: var(--accent); }
+.option input { margin-top: 3px; accent-color: var(--accent); }
+.option b { display: block; }
+.option small { color: var(--muted); }
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field > span { font-weight: 600; }
+.field em { font-style: normal; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row input { flex: 1; }
+input[type="url"], input[type="text"], input[type="password"] {
+  width: 100%; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--ink); font: inherit;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+output { flex: 1; color: var(--muted); }
+button {
+  padding: 8px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+}
+button.secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); white-space: nowrap; }
+button.link { background: none; color: var(--muted); padding: 8px 4px; }
+.actions { display: flex; justify-content: flex-end; }
+#msg { min-height: 21px; margin: 4px 0 10px; color: var(--muted); }
+#msg.err { color: #d14343; }

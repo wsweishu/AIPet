@@ -1,0 +1,47 @@
+{
+  "id": "pet-intent",
+  "pluginKey": "@official-plugins/ai-text-to-json",
+  "pluginVersion": "1.0.26",
+  "name": "桌宠意图识别",
+  "description": "判断用户这句话是否需要查询飞书（今天/某天的日程、未完成待办），输出结构化动作，供桌宠用 lark-cli 只读执行",
+  "paramsSchema": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "description": "用户这一次对桌宠说的话"
+      },
+      "history": {
+        "type": "string",
+        "description": "最近几轮对话记录，每行一条；没有时为「（无）」"
+      },
+      "today": {
+        "type": "string",
+        "description": "用户本地的今天，格式如「2026-10-22 星期四」"
+      }
+    },
+    "required": ["message", "history", "today"]
+  },
+  "formValue": {
+    "modelID": "2015",
+    "modelParams": {
+      "temperature": 0.5,
+      "maxTokens": 8192
+    },
+    "prompt": "你是桌面宠物「肥鱼」的意图识别模块。肥鱼能用飞书命令行替用户做两件只读查询：\n1. calendar_agenda：查看某一天的日程/会议安排\n2. task_list：查看用户还没完成的待办任务\n除此之外的一切（闲聊、写文案、发消息、创建日程、修改任务等）都不需要查询，动作填 none。\n\n用户本地的今天是：{{input.today}}\n\n之前的对话（「（无）」表示这是第一句）：\n{{input.history}}\n\n用户现在说：\n{{input.message}}\n\n判断规则：\n- 问到会议、日程、安排、几点有事、忙不忙、有没有空 → calendar_agenda，并换算出要查的日期\n- 问到待办、任务、todo、还有什么事没做 → task_list\n- 结合之前的对话理解「那明天呢」这类追问\n- 拿不准时填 none，不要猜",
+    "jsonStructure": [
+    {
+      "name": "action",
+      "paramType": "String",
+      "paramDescription": "要执行的动作，只能是 calendar_agenda、task_list、none 三者之一"
+    },
+    {
+      "name": "date",
+      "paramType": "String",
+      "paramDescription": "action 为 calendar_agenda 时要查看的日期，格式 YYYY-MM-DD；其他动作填空字符串"
+    }
+    ]
+  },
+  "createdAt": 1792660000000,
+  "updatedAt": 1792660000000
+}

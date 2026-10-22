@@ -1,0 +1,156 @@
+{
+  "paths": {
+    "/openapi/pet/plan": {
+      "post": {
+        "operationId": "plan",
+        "summary": "识别用户这句话要不要查飞书（日程或待办），返回桌宠可在本机只读执行的动作",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message", "today"],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "用户这一次对桌宠说的话",
+                    "example": "我明天下午有会吗？"
+                  },
+                  "history": {
+                    "type": "array",
+                    "description": "最近几轮对话，旧的在前",
+                    "items": {
+                      "type": "object",
+                      "required": ["role", "content"],
+                      "properties": {
+                        "role": { "type": "string", "enum": ["user", "pet"], "description": "user 为用户说的话，pet 为桌宠的回复", "example": "user" },
+                        "content": { "type": "string", "description": "这一轮的文本", "example": "今天有什么会？" }
+                      }
+                    }
+                  },
+                  "today": {
+                    "type": "string",
+                    "description": "用户本地的今天",
+                    "example": "2026-10-22 星期四"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "意图识别结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["action", "date"],
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "enum": ["calendar_agenda", "task_list", "none"],
+                      "description": "要执行的动作",
+                      "example": "calendar_agenda"
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "calendar_agenda 时要查看的日期（YYYY-MM-DD），其他动作为空字符串",
+                      "example": "2026-10-23"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi/pet/chat": {
+      "post": {
+        "operationId": "chat",
+        "summary": "向桌宠肥鱼发一句话，由妙搭内置豆包生成回复；stream=true 时以 SSE 流式返回",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "用户这一次对桌宠说的话",
+                    "example": "下午三点的会还开吗？"
+                  },
+                  "stream": {
+                    "type": "boolean",
+                    "description": "是否以 SSE（text/event-stream）逐段返回",
+                    "example": true
+                  },
+                  "history": {
+                    "type": "array",
+                    "description": "最近几轮对话，旧的在前；服务端只取最后 10 轮",
+                    "items": {
+                      "type": "object",
+                      "required": ["role", "content"],
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": ["user", "pet"],
+                          "description": "user 为用户说的话，pet 为桌宠的回复",
+                          "example": "user"
+                        },
+                        "content": {
+                          "type": "string",
+                          "description": "这一轮的文本",
+                          "example": "帮我记一下下午三点开会"
+                        }
+                      }
+                    }
+                  },
+                  "userName": {
+                    "type": "string",
+                    "description": "用户的称呼，桌宠回复时用来称呼对方",
+                    "example": "彬淋"
+                  },
+                  "toolResult": {
+                    "type": "string",
+                    "description": "桌宠刚用 lark-cli 查到的飞书结果（精简文本），回答时以此为准",
+                    "example": "2026-10-22 的日程（共 1 项）：\n- 14:30-15:30 产品评审会"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "stream 为 false 时返回完整回复；为 true 时返回 text/event-stream，每个 data 事件带 content 增量，最后是 done 事件",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["reply", "elapsedMs"],
+                  "properties": {
+                    "reply": {
+                      "type": "string",
+                      "description": "桌宠的完整回复",
+                      "example": "咕噜～记下啦，三点前我会提醒你的！"
+                    },
+                    "elapsedMs": {
+                      "type": "number",
+                      "description": "从请求到生成结束的耗时（毫秒）",
+                      "example": 1830
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
