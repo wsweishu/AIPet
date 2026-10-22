@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, screen, dialog, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, screen, dialog, nativeImage } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const config = require('./config');
@@ -11,6 +11,7 @@ const SELFTEST = process.env.AIPET_SELFTEST === '1';
 
 let petWin = null;
 let settingsWin = null;
+let tray = null; // Windows only: the pet skips the taskbar, so the tray is how people find and quit it
 const inflight = new Map(); // chat id -> AbortController
 
 // Defaults shipped next to the app (e.g. which Miaoda app to talk to); user settings override them.
@@ -117,9 +118,9 @@ ipcMain.on('pet:drag', (_e, { dx, dy }) => {
   petWin.setPosition(Math.round(x + dx), Math.round(y + dy));
 });
 
-ipcMain.on('pet:menu', () => {
+function menuTemplate() {
   const cfg = currentConfig();
-  Menu.buildFromTemplate([
+  return [
     { label: cfg.mode === 'login' ? `飞书登录：${cfg.userName || '未登录'}` : `API Key：${cfg.userName || '未命名'}`, enabled: false },
     { type: 'separator' },
     { label: '设置…', click: openSettings },
@@ -127,8 +128,21 @@ ipcMain.on('pet:menu', () => {
     { label: '清空记忆', click: () => notifyPet('pet:clear') },
     { type: 'separator' },
     { label: '退出肥鱼', click: () => app.quit() },
-  ]).popup({ window: petWin });
+  ];
+}
+
+ipcMain.on('pet:menu', () => {
+  Menu.buildFromTemplate(menuTemplate()).popup({ window: petWin });
 });
+
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png')).resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip('AIPet 肥鱼');
+  tray.on('click', () => petWin?.showInactive());
+  // rebuilt on each open so the login line stays current
+  tray.on('right-click', () => tray.popUpContextMenu(Menu.buildFromTemplate(menuTemplate())));
+}
 
 let authorizing = null; // pending lark-cli browser flow, so repeated questions don't open many tabs
 
@@ -249,12 +263,17 @@ async function selftest() {
 // must run before 'ready' so caches and cookies land in the test profile too
 if (SELFTEST && process.env.AIPET_USER_DATA) app.setPath('userData', process.env.AIPET_USER_DATA);
 
+// a second launch (double-clicking the exe again) just brings the existing pet forward
+if (!SELFTEST && !app.requestSingleInstanceLock()) app.quit();
+app.on('second-instance', () => petWin?.showInactive());
+
 app.whenReady().then(() => {
   if (process.platform === 'darwin' && app.dock) {
     const icon = path.join(__dirname, '..', 'assets', 'icon.png');
     if (fs.existsSync(icon)) app.dock.setIcon(nativeImage.createFromPath(icon));
   }
   createPet();
+  if (process.platform === 'win32') createTray();
   if (SELFTEST) selftest();
   else firstRunCheck();
 });

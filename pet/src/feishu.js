@@ -5,7 +5,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { shell } = require('electron');
 
-const SEARCH_DIRS = ['/opt/homebrew/bin', '/usr/local/bin', path.join(process.env.HOME || '', '.local/bin')];
+const IS_WIN = process.platform === 'win32';
+const HOME = process.env.HOME || process.env.USERPROFILE || '';
+const SEARCH_DIRS = IS_WIN
+  ? [path.join(process.env.APPDATA || '', 'npm'), path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs')]
+  : ['/opt/homebrew/bin', '/usr/local/bin', path.join(HOME, '.local/bin')];
 const TIMEOUT_MS = 20_000;
 const MAX_ITEMS = 20;
 
@@ -28,19 +32,27 @@ class NeedsConfigError extends Error {
   }
 }
 
+// On Windows npm installs a lark-cli.cmd shim next to node_modules; running a .cmd needs a shell,
+// so use the native lark-cli.exe the package downloads instead.
+function candidates(dir) {
+  if (!IS_WIN) return [path.join(dir, 'lark-cli')];
+  return [path.join(dir, 'lark-cli.exe'), path.join(dir, 'node_modules', '@larksuite', 'cli', 'bin', 'lark-cli.exe')];
+}
+
 // Apps launched from Finder get a minimal PATH, so look in the usual install locations too.
 function larkCliPath() {
-  const dirs = [...(process.env.PATH || '').split(':'), ...SEARCH_DIRS];
+  const dirs = [...(process.env.PATH || '').split(path.delimiter), ...SEARCH_DIRS];
   for (const dir of dirs) {
-    const p = path.join(dir, 'lark-cli');
-    if (dir && fs.existsSync(p)) return p;
+    if (!dir) continue;
+    const found = candidates(dir).find(p => fs.existsSync(p));
+    if (found) return found;
   }
   throw new Error('没找到 lark-cli，请先安装飞书 CLI：npm install -g @larksuite/cli，再运行 lark-cli config init --new');
 }
 
 function runLark(args) {
   return new Promise((resolve, reject) => {
-    execFile(larkCliPath(), args, { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }, (err, stdout, stderr) => {
+    execFile(larkCliPath(), args, { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
       const text = (stdout || stderr || '').trim();
       let out;
       try {
@@ -164,7 +176,7 @@ async function run(action, args = {}) {
 // Resolves when lark-cli reports the login finished (or rejects on timeout/failure).
 async function authorize(scopes) {
   const start = await new Promise((resolve, reject) => {
-    execFile(larkCliPath(), ['auth', 'login', '--scope', scopes.join(' '), '--no-wait', '--json'], { timeout: TIMEOUT_MS }, (err, stdout) => {
+    execFile(larkCliPath(), ['auth', 'login', '--scope', scopes.join(' '), '--no-wait', '--json'], { timeout: TIMEOUT_MS, windowsHide: true }, (err, stdout) => {
       try {
         resolve(JSON.parse(stdout));
       } catch {
@@ -175,7 +187,7 @@ async function authorize(scopes) {
   if (!start.verification_url || !start.device_code) throw new Error('lark-cli 没有返回授权链接');
   await shell.openExternal(start.verification_url);
   return new Promise((resolve, reject) => {
-    const child = spawn(larkCliPath(), ['auth', 'login', '--device-code', start.device_code], { stdio: 'ignore' });
+    const child = spawn(larkCliPath(), ['auth', 'login', '--device-code', start.device_code], { stdio: 'ignore', windowsHide: true });
     child.on('exit', code => (code === 0 ? resolve() : reject(new Error('飞书授权没有完成'))));
     child.on('error', reject);
   });
@@ -185,7 +197,7 @@ async function authorize(scopes) {
 // It blocks until the user finishes; the verification URL is taken from its output and opened.
 function configure() {
   return new Promise((resolve, reject) => {
-    const child = spawn(larkCliPath(), ['config', 'init', '--new'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(larkCliPath(), ['config', 'init', '--new'], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     let opened = false;
     const watch = chunk => {
       const url = String(chunk).match(/https:\/\/\S+/)?.[0];

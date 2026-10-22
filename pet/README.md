@@ -36,7 +36,8 @@
 ```bash
 npm install
 npm start            # 开发运行
-npm run package      # 打包为 dist/AIPet 肥鱼-darwin-arm64/AIPet 肥鱼.app
+npm run package:mac  # 打包为 dist/AIPet 肥鱼-darwin-arm64/AIPet 肥鱼.app（Apple 芯片）
+npm run package:win  # 打包为 dist/AIPet 肥鱼-win32-x64/AIPet.exe（64 位 Windows，在 Mac 上也能打）
 ```
 
 自检（自动发一句话、打印耗时、截图后退出）：
@@ -45,14 +46,14 @@ npm run package      # 打包为 dist/AIPet 肥鱼-darwin-arm64/AIPet 肥鱼.app
 AIPET_SELFTEST=1 AIPET_USER_DATA=/tmp/aipet-test AIPET_CONFIG_FILE=../.aipet/keys/<姓名>.env AIPET_SELFTEST_SHOT=/tmp/pet.png npm start
 ```
 
-图标由 `npx electron scripts/make-icon.js` 从 `assets/icon.html` 生成。
+图标由 `npx electron scripts/make-icon.js` 从 `assets/icon.html` 生成；Windows 用的 `assets/icon.ico` 由 `scripts/make-ico.js` 打包（先用 `sips -z N N` 从 icon.png 缩出 16–256 各尺寸）。
 
 ## 结构
 
-- `src/main.js` 透明置顶窗口、拖动、点击穿透、右键菜单、设置窗口、自检
+- `src/main.js` 透明置顶窗口、拖动、点击穿透、右键菜单、Windows 托盘、设置窗口、自检
 - `src/feishu.js` 只读执行器：动作白名单、lark-cli 调用、结果精简、缺权限时的设备授权
 - `src/brain.js` 调妙搭：`/plan` 意图识别；`/openapi/pet/chat`（API Key）或 `/api/pet/chat`（飞书登录 + CSRF），解析 SSE
-- `src/config.js` 本机配置，存在 `~/Library/Application Support/AIPet 肥鱼/config.json`（权限 600）
+- `src/config.js` 本机配置，存在 `~/Library/Application Support/AIPet 肥鱼/config.json`（Windows 是 `%APPDATA%\AIPet 肥鱼\config.json`），权限 600
 - `renderer/` 鲸鱼娘动画播放（按状态切换：待机、倾听、思考、查飞书、说话、庆祝、出错、打瞌睡，外加拖拽、双击、睡醒反应和待机小动作）与对话气泡
 - `assets/whalechan/` 19 段透明 WebM 动画与出处说明
 - `pet.defaults.json` 默认连接的妙搭应用地址
@@ -61,7 +62,8 @@ AIPET_SELFTEST=1 AIPET_USER_DATA=/tmp/aipet-test AIPET_CONFIG_FILE=../.aipet/key
 
 - 妙搭网关有时会把流式回复攒齐了一次性发出，所以界面统一用打字机效果显示
 - 首字大约 3–6 秒
-- 未签名的 .app 拷到别的电脑上会被 macOS 拦，需要右键「打开」一次
+- 未签名的 .app 拷到别的电脑上会被 macOS 拦，需要右键「打开」一次；Windows 会弹「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」
+- Windows 上肥鱼不占任务栏，右下角托盘图标右键可以打开设置或退出；lark-cli 用 npm 装好后，肥鱼直接调用它下载的 `lark-cli.exe`
 
 ## 形象与版权
 

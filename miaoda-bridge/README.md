@@ -58,10 +58,10 @@ lark-cli apps +plugin-install --name @official-plugins/ai-text-to-json
    lark-cli apps +access-scope-set --as user --app-id <app_id> --scope tenant
    ```
 
-8. 可选：安装包下载地址默认指向本仓库的 GitHub Releases。要换地址，设置环境变量，不用改代码：
+8. 可选：安装包下载地址默认指向本仓库 GitHub 最新 Release 里的 `AIPet-fatfish-macos-arm64.zip` 和 `AIPet-fatfish-windows-x64.zip`。要换地址，设置环境变量 `PET_DOWNLOAD_URL_MAC` / `PET_DOWNLOAD_URL_WIN`，不用改代码：
 
    ```bash
-   lark-cli apps +env-set --as user --app-id <app_id> --environment online --key PET_DOWNLOAD_URL --value <下载地址>
+   lark-cli apps +env-set --as user --app-id <app_id> --environment online --key PET_DOWNLOAD_URL_WIN --value <下载地址>
    ```
 
 9. 可选：调试时如果不想登录，可以给个人发 API Key（在本仓库根目录运行，先把 `online_url` 和 `app_id` 写进 `.aipet/miaoda.env`）：

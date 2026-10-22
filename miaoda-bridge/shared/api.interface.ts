@@ -55,8 +55,10 @@ export interface PetChatResponse {
 export interface PetClaimResponse {
   /** 领取人姓名 */
   userName: string;
-  /** 桌宠安装包下载地址 */
-  downloadUrl: string;
+  /** macOS（Apple 芯片）安装包下载地址 */
+  downloadUrlMac: string;
+  /** Windows（x64）安装包下载地址 */
+  downloadUrlWin: string;
   /** 桌宠里要填的妙搭应用地址（本应用的线上地址） */
   appUrl: string;
   /** 首次查飞书时 lark-cli 会申请的权限 */

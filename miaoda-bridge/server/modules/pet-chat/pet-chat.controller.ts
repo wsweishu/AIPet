@@ -6,7 +6,10 @@ import type {
 } from '@shared/api.interface';
 import { PetChatService } from './pet-chat.service';
 
-const DEFAULT_DOWNLOAD_URL = 'https://github.com/wsweishu/AIPet/releases/latest';
+// Release assets keep the same file names across versions, so latest/download always serves the newest build.
+const RELEASES = 'https://github.com/wsweishu/AIPet/releases/latest/download';
+const DEFAULT_DOWNLOAD_MAC = `${RELEASES}/AIPet-fatfish-macos-arm64.zip`;
+const DEFAULT_DOWNLOAD_WIN = `${RELEASES}/AIPet-fatfish-windows-x64.zip`;
 // What the pet asks lark-cli for on the first Feishu question (read-only calendar and tasks).
 const PET_SCOPES = ['calendar:calendar.event:read', 'task:task:read'];
 
@@ -28,7 +31,8 @@ export class PetChatController {
     const basePath = process.env.CLIENT_BASE_PATH ?? '';
     return {
       userName: userName ?? '',
-      downloadUrl: process.env.PET_DOWNLOAD_URL || DEFAULT_DOWNLOAD_URL,
+      downloadUrlMac: process.env.PET_DOWNLOAD_URL_MAC || DEFAULT_DOWNLOAD_MAC,
+      downloadUrlWin: process.env.PET_DOWNLOAD_URL_WIN || DEFAULT_DOWNLOAD_WIN,
       appUrl: process.env.PET_APP_URL || `${proto}://${host}${basePath}`,
       scopes: PET_SCOPES,
     };

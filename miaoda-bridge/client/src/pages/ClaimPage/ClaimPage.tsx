@@ -6,6 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { claimPet } from '@client/src/api';
 import type { PetClaimResponse } from '@shared/api.interface';
 
+// Puts the visitor's own platform first; both downloads stay available.
+const IS_WINDOWS = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
+
 interface CopyLineProps {
   text: string;
 }
@@ -61,7 +64,7 @@ const ClaimPage: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle>领取你的肥鱼</CardTitle>
-              <CardDescription>领取后会显示下载链接和安装步骤。目前只支持 Apple 芯片的 Mac。</CardDescription>
+              <CardDescription>领取后会显示下载链接和安装步骤。支持 Apple 芯片的 Mac 和 64 位 Windows。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button onClick={handleClaim} disabled={loading}>
@@ -78,15 +81,31 @@ const ClaimPage: React.FC = () => {
               <CardDescription>按下面的步骤装好就能聊天。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <Button asChild>
-                <a href={claim.downloadUrl} target="_blank" rel="noreferrer">
-                  <Download className="mr-2 h-4 w-4" />
-                  下载肥鱼（macOS）
-                </a>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant={IS_WINDOWS ? 'outline' : 'default'}>
+                  <a href={claim.downloadUrlMac} target="_blank" rel="noreferrer">
+                    <Download className="mr-2 h-4 w-4" />
+                    下载肥鱼（macOS）
+                  </a>
+                </Button>
+                <Button asChild variant={IS_WINDOWS ? 'default' : 'outline'}>
+                  <a href={claim.downloadUrlWin} target="_blank" rel="noreferrer">
+                    <Download className="mr-2 h-4 w-4" />
+                    下载肥鱼（Windows）
+                  </a>
+                </Button>
+              </div>
               <ol className="list-decimal space-y-4 pl-5 text-sm leading-6">
                 <li>
-                  解压后把「AIPet 肥鱼.app」拖进「应用程序」。应用没有签名，第一次打开要<b>右键 → 打开</b>。
+                  {IS_WINDOWS ? (
+                    <>
+                      解压到任意文件夹，双击「AIPet.exe」。应用没有签名，如果出现「Windows 已保护你的电脑」，点<b>更多信息 → 仍要运行</b>。肥鱼不占任务栏，在右下角托盘里能找到她。
+                    </>
+                  ) : (
+                    <>
+                      解压后把「AIPet 肥鱼.app」拖进「应用程序」。应用没有签名，第一次打开要<b>右键 → 打开</b>。
+                    </>
+                  )}
                 </li>
                 <li>
                   打开后在设置里选「飞书登录」，妙搭地址填下面这个，再点「飞书登录…」完成登录：

@@ -1,7 +1,7 @@
 {
   "name": "aipet-fatfish",
   "productName": "AIPet 肥鱼",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "开源 AI 桌宠：一条住在桌面上的蓝色大肥鱼，大脑是飞书妙搭里的豆包",
   "main": "src/main.js",
   "license": "MIT",
@@ -9,7 +9,9 @@
   "scripts": {
     "start": "electron .",
     "selftest": "AIPET_SELFTEST=1 electron .",
-    "package": "electron-packager . \"AIPet 肥鱼\" --platform=darwin --arch=arm64 --out=dist --overwrite --icon=assets/icon.icns --app-bundle-id=dev.aipet.fatfish --ignore=^/dist"
+    "package:mac": "electron-packager . \"AIPet 肥鱼\" --platform=darwin --arch=arm64 --out=dist --overwrite --icon=assets/icon.icns --app-bundle-id=dev.aipet.fatfish --ignore=^/dist",
+    "package:win": "electron-packager . \"AIPet 肥鱼\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --executable-name=AIPet --ignore=^/dist --win32metadata.CompanyName=AIPet --win32metadata.FileDescription=\"AIPet 肥鱼\" --win32metadata.ProductName=\"AIPet 肥鱼\"",
+    "package": "npm run package:mac"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
