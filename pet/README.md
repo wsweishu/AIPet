@@ -17,10 +17,12 @@
 问「今天有什么会」「明天下午忙不忙」「我还有哪些待办」时，肥鱼会：
 
 1. 请妙搭里的豆包判断要不要查、查什么（`/plan`，输出 `calendar_agenda` / `task_list` / `none` 和日期）
-2. 在本机用 lark-cli 以你的飞书身份只读查询（`calendar +agenda` / `task +get-my-tasks --complete=false`）
+2. 用你本人的飞书授权，直接调飞书 OpenAPI 只读查询（日历 `instance_view`、任务 `GET /task/v2/tasks?completed=false`）
 3. 只把标题、时间、地点、是否回复邀请交回豆包，由它按结果回答（`/chat` 的 `toolResult`）
 
-本机只认白名单里的这两个动作，日期必须是 `YYYY-MM-DD`，命令不经过 shell。模型的输出（以及会议标题等被拼进提示词的内容）都当作不可信输入，所以写操作和其他命令一律不会执行。缺飞书权限时肥鱼会自动打开授权页。需要本机已安装并登录 lark-cli。
+本机只认白名单里的这两个动作，日期必须是 `YYYY-MM-DD`。模型的输出（以及会议标题等被拼进提示词的内容）都当作不可信输入，所以写操作一律不会执行。
+
+**授权**：第一次查飞书时（或右键 →「授权查看飞书…」），肥鱼弹出飞书授权页，你点「授权」即可，不需要安装 lark-cli。授权窗口和「飞书登录」共用登录状态，通常不用再输账号。飞书跳回妙搭时，肥鱼截下授权码交给妙搭，妙搭用管理员配置的飞书应用密钥换成**你本人的** token 交回来。token 用系统钥匙串加密后存在本机 `feishu-token.bin`，过期前自动通过妙搭刷新；退出登录时删除。只有「飞书登录」模式能授权。
 
 ## 连接方式
 
@@ -51,8 +53,8 @@ AIPET_SELFTEST=1 AIPET_USER_DATA=/tmp/aipet-test AIPET_CONFIG_FILE=../.aipet/key
 ## 结构
 
 - `src/main.js` 透明置顶窗口、拖动、点击穿透、右键菜单、Windows 托盘、设置窗口、自检
-- `src/feishu.js` 只读执行器：动作白名单、lark-cli 调用、结果精简、缺权限时的设备授权
-- `src/brain.js` 调妙搭：`/plan` 意图识别；`/openapi/pet/chat`（API Key）或 `/api/pet/chat`（飞书登录 + CSRF），解析 SSE
+- `src/feishu.js` 只读执行器：动作白名单、飞书 OpenAPI 调用、结果精简、授权窗口与 token 加密存储和刷新
+- `src/brain.js` 调妙搭：`/plan` 意图识别；`/openapi/pet/chat`（API Key）或 `/api/pet/chat`（飞书登录 + CSRF），解析 SSE；`/api/pet/feishu/*` 换取和刷新飞书 token
 - `src/config.js` 本机配置，存在 `~/Library/Application Support/AIPet 肥鱼/config.json`（Windows 是 `%APPDATA%\AIPet 肥鱼\config.json`），权限 600
 - `renderer/` 鲸鱼娘动画播放（按状态切换：待机、倾听、思考、查飞书、说话、庆祝、出错、打瞌睡，外加拖拽、双击、睡醒反应和待机小动作）与对话气泡
 - `assets/whalechan/` 19 段透明 WebM 动画与出处说明
@@ -63,7 +65,7 @@ AIPET_SELFTEST=1 AIPET_USER_DATA=/tmp/aipet-test AIPET_CONFIG_FILE=../.aipet/key
 - 妙搭网关有时会把流式回复攒齐了一次性发出，所以界面统一用打字机效果显示
 - 首字大约 3–6 秒
 - 未签名的 .app 拷到别的电脑上会被 macOS 拦，需要右键「打开」一次；Windows 会弹「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」
-- Windows 上肥鱼不占任务栏，右下角托盘图标右键可以打开设置或退出；lark-cli 用 npm 装好后，肥鱼直接调用它下载的 `lark-cli.exe`
+- Windows 上肥鱼不占任务栏，右下角托盘图标右键可以打开设置或退出
 
 ## 形象与版权
 

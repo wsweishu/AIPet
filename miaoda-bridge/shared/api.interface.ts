@@ -18,11 +18,11 @@ export interface PetChatRequest {
   history?: PetChatTurn[];
   /** 用户的称呼；/api 路由忽略此字段，改用登录用户的名字 */
   userName?: string;
-  /** 桌宠刚用 lark-cli 查到的飞书结果（精简文本），回答时以此为准 */
+  /** 桌宠刚用飞书 OpenAPI 查到的结果（精简文本），回答时以此为准 */
   toolResult?: string;
 }
 
-/** 桌宠可以在本机用 lark-cli 只读执行的动作 */
+/** 桌宠可以以用户身份只读执行的飞书动作 */
 export type PetAction = 'calendar_agenda' | 'task_list' | 'none';
 
 /** POST /openapi/pet/plan 与 POST /api/pet/plan 的请求体 */
@@ -61,7 +61,7 @@ export interface PetClaimResponse {
   downloadUrlWin: string;
   /** 桌宠里要填的妙搭应用地址（本应用的线上地址） */
   appUrl: string;
-  /** 首次查飞书时 lark-cli 会申请的权限 */
+  /** 首次查飞书时肥鱼会申请的权限 */
   scopes: string[];
 }
 
@@ -73,4 +73,26 @@ export interface PetMeResponse {
   userName: string;
   /** preview = 预览态，runtime = 发布运行态 */
   env: string;
+}
+
+/** GET /api/pet/feishu/authorize-url 响应 */
+export interface PetFeishuAuthorizeResponse {
+  /** 飞书授权页地址 */
+  url: string;
+  /** 授权后飞书跳回的地址，桌宠在跳转时截获其中的 code */
+  redirectUri: string;
+}
+
+/** POST /api/pet/feishu/token 与 POST /api/pet/feishu/refresh 响应：用户本人的飞书凭证 */
+export interface PetFeishuTokenResponse {
+  /** user_access_token */
+  accessToken: string;
+  /** accessToken 有效期（秒） */
+  expiresIn: number;
+  /** refresh_token，只能用一次，每次刷新都会换新 */
+  refreshToken: string;
+  /** refreshToken 有效期（秒） */
+  refreshExpiresIn: number;
+  /** 用户实际授予的权限，空格分隔 */
+  scope: string;
 }

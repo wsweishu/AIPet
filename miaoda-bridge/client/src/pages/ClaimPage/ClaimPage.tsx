@@ -56,7 +56,7 @@ const ClaimPage: React.FC = () => {
             AIPet 肥鱼
           </h1>
           <p className="text-muted-foreground">
-            住在桌面上的「蓝色大肥鱼」女仆鲸鱼娘：点她聊天，她用豆包回答，还能用你自己的 lark-cli 查你的飞书日程和待办（只读）。
+            住在桌面上的「蓝色大肥鱼」女仆鲸鱼娘：点她聊天，她用豆包回答，还能在你授权后查你的飞书日程和待办（只读）。
           </p>
         </header>
 
@@ -112,12 +112,7 @@ const ClaimPage: React.FC = () => {
                   <CopyLine text={claim.appUrl} />
                 </li>
                 <li>
-                  安装飞书命令行 lark-cli（需要 Node.js），再创建你自己的 CLI 应用，按浏览器里的提示完成：
-                  <CopyLine text="npm install -g @larksuite/cli" />
-                  <CopyLine text="lark-cli config init --new" />
-                </li>
-                <li>
-                  第一次问「今天有什么会」时，肥鱼会打开飞书授权页，申请这些只读权限：
+                  第一次问「今天有什么会」时，肥鱼会弹出飞书授权页，点「授权」就行（不用装别的软件）。申请的都是只读权限：
                   <ul className="mt-1 list-disc pl-5 font-mono text-xs text-muted-foreground">
                     {claim.scopes.map((s: string) => (
                       <li key={s}>{s}</li>

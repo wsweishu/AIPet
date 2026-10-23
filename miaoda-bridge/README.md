@@ -7,7 +7,10 @@
 | `POST /openapi/pet/plan` | API Key（`Authorization: Bearer <key>`） | 判断这句话要不要查飞书，返回 `{ action, date }`（`calendar_agenda` / `task_list` / `none`） |
 | `POST /openapi/pet/chat` | API Key | 生成回复；`stream: true` 时以 SSE 返回 |
 | `GET /api/pet/me`、`POST /api/pet/plan`、`POST /api/pet/chat` | 飞书登录（Cookie + `X-Suda-Csrf-Token`） | 同上，但能拿到登录用户身份（桌宠默认走这条） |
-| `POST /api/pet/claim` | 飞书登录 | 领取肥鱼：记录领取人（写日志），返回下载地址、本应用地址和要申请的 lark-cli 权限 |
+| `POST /api/pet/claim` | 飞书登录 | 领取肥鱼：记录领取人（写日志），返回下载地址、本应用地址和肥鱼要申请的飞书权限 |
+| `GET /api/pet/feishu/authorize-url?state=` | 飞书登录 | 生成飞书授权页地址（只读日历、任务和 `offline_access`） |
+| `GET /api/pet/feishu/callback` | 无 | 授权后的回跳地址；桌宠会在跳转时截下授权码，这个页面一般看不到 |
+| `POST /api/pet/feishu/token`、`POST /api/pet/feishu/refresh` | 飞书登录 | 用飞书应用密钥把授权码换成、或刷新**用户本人的** token，原样交回桌宠，服务端不保存 |
 
 应用首页（`client/src/pages/ClaimPage`）就是「领取肥鱼」页：同事打开应用并用飞书登录后，点「领取肥鱼」，页面就会显示下载按钮和安装步骤。
 
@@ -64,7 +67,21 @@ lark-cli apps +plugin-install --name @official-plugins/ai-text-to-json
    lark-cli apps +env-set --as user --app-id <app_id> --environment online --key PET_DOWNLOAD_URL_WIN --value <下载地址>
    ```
 
-9. 可选：调试时如果不想登录，可以给个人发 API Key（在本仓库根目录运行，先把 `online_url` 和 `app_id` 写进 `.aipet/miaoda.env`）：
+9. **创建飞书应用，让肥鱼能查日历和待办**（不用每个同事装 lark-cli）：
+   1. 在[飞书开发者后台](https://open.feishu.cn/app)创建**企业自建应用**，比如叫「AIPet 肥鱼」。
+   2. 「权限管理」开通**用户身份**的：`calendar:calendar:read`、`calendar:calendar.event:read`、`task:task:read`、`offline_access`。
+   3. 「安全设置 → 重定向 URL」添加 `<online_url>/api/pet/feishu/callback`（`online_url` 是第 6 步拿到的线上地址，必须完全一致）。
+   4. 「版本管理与发布」创建版本，可用范围选全员，提交管理员审核。**审核通过前，重定向 URL 不生效**，授权页会报 20029。
+   5. 把应用凭证设成妙搭环境变量（App Secret 只放这里，不要发给别人），然后重新发布一次（第 6 步的 `+release-create`），环境变量才生效：
+
+      ```bash
+      lark-cli apps +env-set --as user --app-id <app_id> --environment online --key FEISHU_APP_ID --value <App ID>
+      lark-cli apps +env-set --as user --app-id <app_id> --environment online --key FEISHU_APP_SECRET --value <App Secret>
+      ```
+
+      如果回跳地址和自动推算的不一致（比如走了自定义域名），再设置 `FEISHU_REDIRECT_URI`。
+
+10. 可选：调试时如果不想登录，可以给个人发 API Key（在本仓库根目录运行，先把 `online_url` 和 `app_id` 写进 `.aipet/miaoda.env`）：
 
    ```bash
    node scripts/issue-key.mjs 张三

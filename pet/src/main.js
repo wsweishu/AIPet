@@ -125,6 +125,7 @@ function menuTemplate() {
     { type: 'separator' },
     { label: '设置…', click: openSettings },
     { label: '飞书登录…', click: doLogin },
+    { label: feishu.isAuthorized() ? '重新授权查看飞书…' : '授权查看飞书…', click: startAuthorize },
     { label: '清空记忆', click: () => notifyPet('pet:clear') },
     { type: 'separator' },
     { label: '退出肥鱼', click: () => app.quit() },
@@ -144,19 +145,20 @@ function createTray() {
   tray.on('right-click', () => tray.popUpContextMenu(Menu.buildFromTemplate(menuTemplate())));
 }
 
-let authorizing = null; // pending lark-cli browser flow, so repeated questions don't open many tabs
+let authorizing = null; // pending Feishu consent window, so repeated questions don't open several
 
-function startBrowserFlow(run, doneText) {
+function startAuthorize() {
   if (authorizing) return;
-  authorizing = run()
-    .then(() => notifyPet('pet:status', { text: doneText, mood: 'happy' }))
+  // authorize() resolves false when the window is closed or the user declines
+  authorizing = feishu.authorize(currentConfig(), settingsWin ?? undefined)
+    .then(ok => notifyPet('pet:status', ok
+      ? { text: '飞书授权好啦！再问我一次吧～', mood: 'happy' }
+      : { text: '没有授权，需要时再叫我～', mood: 'listening' }))
     .catch(err => notifyPet('pet:status', { text: `没完成：${err.message}`, mood: 'error' }))
     .finally(() => { authorizing = null; });
 }
-const startAuthorize = scopes => startBrowserFlow(() => feishu.authorize(scopes), '飞书授权好啦！再问我一次吧～');
-const startConfigure = () => startBrowserFlow(() => feishu.configure(), 'lark-cli 配置好啦！再问我一次，我会接着申请查看权限～');
 
-// One turn: Doubao picks a read-only Feishu action (if any) → lark-cli runs it here →
+// One turn: Doubao picks a read-only Feishu action (if any) → it runs here with the user's own token →
 // Doubao answers grounded on the result, streamed back to the pet.
 ipcMain.handle('chat:send', async (e, { id, message, history }) => {
   const ctrl = new AbortController();
@@ -175,16 +177,11 @@ ipcMain.handle('chat:send', async (e, { id, message, history }) => {
     if (feishu.isAction(step.action)) {
       send('chat:tool', { action: step.action, date: step.date });
       try {
-        toolResult = await feishu.run(step.action, { date: step.date });
+        toolResult = await feishu.run(cfg, step.action, { date: step.date });
       } catch (err) {
         if (err instanceof feishu.NeedsAuthError) {
-          startAuthorize(err.scopes);
-          send('chat:error', { message: '肥鱼还没有查看你飞书的权限，我打开了授权页，点「同意」后再问我一次～', auth: true });
-          return;
-        }
-        if (err instanceof feishu.NeedsConfigError) {
-          startConfigure();
-          send('chat:error', { message: '你的 lark-cli 还没配置，我打开了创建 CLI 应用的页面，按提示完成后再问我一次～', auth: true });
+          startAuthorize();
+          send('chat:error', { message: '肥鱼还没有查看你飞书的权限，我打开了授权页，点「授权」后再问我一次～', auth: true });
           return;
         }
         toolResult = `查询失败：${err.message}`;
@@ -236,6 +233,7 @@ ipcMain.handle('settings:login', async () => {
 
 ipcMain.handle('settings:logout', async () => {
   await brain.logout();
+  feishu.clearToken();
   config.save({ mode: 'key' });
   return config.publicView(currentConfig());
 });

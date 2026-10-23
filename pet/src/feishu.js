@@ -1,72 +1,111 @@
-// The pet's hands: read-only Feishu queries through the local lark-cli, as the signed-in user.
+// The pet's hands: read-only Feishu queries through Feishu's OpenAPI, as the signed-in user.
 // Only the actions below can run; the model picks one by name and supplies at most a date.
-const { execFile, spawn } = require('node:child_process');
+// The user authorizes once in a Feishu consent window; the bridge (which holds the Feishu app
+// secret) swaps the code for the user's own token, kept here encrypted with the OS keychain.
+const { app, BrowserWindow, safeStorage } = require('electron');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { shell } = require('electron');
+const brain = require('./brain');
 
-const IS_WIN = process.platform === 'win32';
-const HOME = process.env.HOME || process.env.USERPROFILE || '';
-const SEARCH_DIRS = IS_WIN
-  ? [path.join(process.env.APPDATA || '', 'npm'), path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs')]
-  : ['/opt/homebrew/bin', '/usr/local/bin', path.join(HOME, '.local/bin')];
+const API = 'https://open.feishu.cn/open-apis';
 const TIMEOUT_MS = 20_000;
 const MAX_ITEMS = 20;
+const EARLY_REFRESH_MS = 5 * 60_000;
+const AUTH_TIMEOUT_MS = 5 * 60_000;
 
-const SCOPES = {
-  calendar_agenda: 'calendar:calendar.event:read',
-  task_list: 'task:task:read',
-};
+// Feishu error codes that mean the token is gone or lacks a scope the user must grant
+const TOKEN_INVALID = new Set([99991668, 99991677, 20005]);
+const SCOPE_MISSING = new Set([99991679, 99991672]);
 
 class NeedsAuthError extends Error {
-  constructor(scopes) {
-    super(`缺少飞书权限：${scopes.join('、')}`);
-    this.scopes = scopes;
-  }
-}
-
-// lark-cli is installed but this user has not created their own CLI app yet.
-class NeedsConfigError extends Error {
   constructor() {
-    super('lark-cli 还没有配置');
+    super('还没有授权肥鱼查看你的飞书');
   }
 }
 
-// On Windows npm installs a lark-cli.cmd shim next to node_modules; running a .cmd needs a shell,
-// so use the native lark-cli.exe the package downloads instead.
-function candidates(dir) {
-  if (!IS_WIN) return [path.join(dir, 'lark-cli')];
-  return [path.join(dir, 'lark-cli.exe'), path.join(dir, 'node_modules', '@larksuite', 'cli', 'bin', 'lark-cli.exe')];
+// ---------- the user's token, encrypted at rest when the OS offers a keychain ----------
+
+function tokenFile() {
+  return path.join(app.getPath('userData'), 'feishu-token.bin');
 }
 
-// Apps launched from Finder get a minimal PATH, so look in the usual install locations too.
-function larkCliPath() {
-  const dirs = [...(process.env.PATH || '').split(path.delimiter), ...SEARCH_DIRS];
-  for (const dir of dirs) {
-    if (!dir) continue;
-    const found = candidates(dir).find(p => fs.existsSync(p));
-    if (found) return found;
+function loadToken() {
+  try {
+    const raw = fs.readFileSync(tokenFile());
+    const text = safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(raw) : raw.toString('utf8');
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
-  throw new Error('没找到 lark-cli，请先安装飞书 CLI：npm install -g @larksuite/cli，再运行 lark-cli config init --new');
 }
 
-function runLark(args) {
-  return new Promise((resolve, reject) => {
-    execFile(larkCliPath(), args, { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
-      const text = (stdout || stderr || '').trim();
-      let out;
-      try {
-        out = JSON.parse(text);
-      } catch {
-        return reject(new Error(err ? `lark-cli 出错：${(stderr || err.message).slice(0, 160)}` : 'lark-cli 返回了无法解析的内容'));
-      }
-      if (out.ok) return resolve(out.data);
-      const e = out.error || {};
-      if (e.subtype === 'missing_scope' && Array.isArray(e.missing_scopes)) return reject(new NeedsAuthError(e.missing_scopes));
-      if (e.type === 'config' && e.subtype === 'not_configured') return reject(new NeedsConfigError());
-      reject(new Error(e.message || 'lark-cli 调用失败'));
-    });
+function saveToken(t) {
+  const now = Date.now();
+  const token = {
+    accessToken: t.accessToken,
+    expiresAt: now + t.expiresIn * 1000,
+    refreshToken: t.refreshToken,
+    refreshExpiresAt: t.refreshToken ? now + t.refreshExpiresIn * 1000 : 0,
+    scope: t.scope,
+  };
+  const text = JSON.stringify(token);
+  const data = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(text) : text;
+  fs.mkdirSync(path.dirname(tokenFile()), { recursive: true });
+  fs.writeFileSync(tokenFile(), data, { mode: 0o600 });
+  return token;
+}
+
+function clearToken() {
+  fs.rmSync(tokenFile(), { force: true });
+  primaryCalendarId = null;
+}
+
+function isAuthorized() {
+  const t = loadToken();
+  return Boolean(t && (t.expiresAt > Date.now() || t.refreshExpiresAt > Date.now()));
+}
+
+let refreshing = null; // a refresh token works once, so concurrent callers share one refresh
+
+async function accessToken(cfg, { forceRefresh = false } = {}) {
+  const t = loadToken();
+  if (!t) throw new NeedsAuthError();
+  if (!forceRefresh && t.expiresAt - EARLY_REFRESH_MS > Date.now()) return t.accessToken;
+  if (!t.refreshToken || t.refreshExpiresAt <= Date.now()) throw new NeedsAuthError();
+  refreshing ??= brain.feishuRefresh(cfg, t.refreshToken)
+    .then(saveToken)
+    .finally(() => { refreshing = null; });
+  return (await refreshing).accessToken;
+}
+
+// ---------- OpenAPI ----------
+
+async function api(cfg, method, apiPath, query, retried = false) {
+  const url = new URL(`${API}${apiPath}`);
+  for (const [k, v] of Object.entries(query || {})) url.searchParams.set(k, String(v));
+  const token = await accessToken(cfg, { forceRefresh: retried });
+  const res = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=utf-8' },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
+  const body = await res.json().catch(() => null);
+  if (body?.code === 0) return body.data ?? {};
+  const code = body?.code;
+  if (TOKEN_INVALID.has(code) && !retried) return api(cfg, method, apiPath, query, true);
+  if (TOKEN_INVALID.has(code) || SCOPE_MISSING.has(code)) throw new NeedsAuthError();
+  throw new Error(`飞书接口出错：${body?.msg || `HTTP ${res.status}`}${code ? `（${code}）` : ''}`);
+}
+
+let primaryCalendarId = null;
+
+async function primaryCalendar(cfg) {
+  if (primaryCalendarId) return primaryCalendarId;
+  const data = await api(cfg, 'POST', '/calendar/v4/calendars/primary');
+  primaryCalendarId = data.calendars?.[0]?.calendar?.calendar_id;
+  if (!primaryCalendarId) throw new Error('没找到你的飞书主日历');
+  return primaryCalendarId;
 }
 
 // ---------- formatting: keep only what the model needs to answer ----------
@@ -92,7 +131,7 @@ function toDate(v) {
 const hhmm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-// lark-cli shortcut output shapes vary by version; find the first array of records.
+// Find the first array of records in an OpenAPI `data` object.
 function findItems(data) {
   if (Array.isArray(data)) return data;
   if (data && typeof data === 'object') {
@@ -151,14 +190,20 @@ function formatTasks(data) {
 // ---------- the allowlist ----------
 
 const ACTIONS = {
-  async calendar_agenda({ date }) {
+  async calendar_agenda(cfg, { date }) {
     const day = /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : ymd(new Date());
-    const tz = localOffset(new Date(`${day}T12:00:00`));
-    const data = await runLark(['calendar', '+agenda', '--as', 'user', '--start', `${day}T00:00:00${tz}`, '--end', `${day}T23:59:59${tz}`]);
+    const start = new Date(`${day}T00:00:00`);
+    const end = new Date(`${day}T23:59:59`);
+    const id = await primaryCalendar(cfg);
+    // instance_view expands recurring events into the day's occurrences
+    const data = await api(cfg, 'GET', `/calendar/v4/calendars/${encodeURIComponent(id)}/events/instance_view`, {
+      start_time: Math.floor(start.getTime() / 1000),
+      end_time: Math.floor(end.getTime() / 1000),
+    });
     return formatAgenda(data, day);
   },
-  async task_list() {
-    const data = await runLark(['task', '+get-my-tasks', '--as', 'user', '--complete=false']);
+  async task_list(cfg) {
+    const data = await api(cfg, 'GET', '/task/v2/tasks', { type: 'my_tasks', completed: false, page_size: 100 });
     return formatTasks(data);
   },
 };
@@ -167,52 +212,59 @@ function isAction(name) {
   return Object.prototype.hasOwnProperty.call(ACTIONS, name);
 }
 
-async function run(action, args = {}) {
+async function run(cfg, action, args = {}) {
   if (!isAction(action)) throw new Error(`不支持的动作：${action}`);
-  return ACTIONS[action](args);
+  return ACTIONS[action](cfg, args);
 }
 
-// Starts lark-cli's device login for the missing scopes and opens the approval page in the browser.
-// Resolves when lark-cli reports the login finished (or rejects on timeout/failure).
-async function authorize(scopes) {
-  const start = await new Promise((resolve, reject) => {
-    execFile(larkCliPath(), ['auth', 'login', '--scope', scopes.join(' '), '--no-wait', '--json'], { timeout: TIMEOUT_MS, windowsHide: true }, (err, stdout) => {
-      try {
-        resolve(JSON.parse(stdout));
-      } catch {
-        reject(new Error(`无法发起飞书授权：${err?.message || stdout}`));
-      }
+// Opens Feishu's consent page in a window that shares the Miaoda login (so Feishu SSO is already
+// done), catches the redirect back to the bridge, and swaps the code for the user's token.
+// Resolves true once authorized, false if the user closes the window or declines.
+async function authorize(cfg, parent) {
+  const state = crypto.randomBytes(24).toString('base64url');
+  const { url, redirectUri } = await brain.feishuAuthorizeUrl(cfg, state);
+  return new Promise((resolve, reject) => {
+    const win = new BrowserWindow({
+      width: 520,
+      height: 720,
+      parent,
+      title: '飞书授权 · AIPet 肥鱼',
+      webPreferences: { partition: brain.PARTITION, contextIsolation: true, sandbox: true },
     });
-  });
-  if (!start.verification_url || !start.device_code) throw new Error('lark-cli 没有返回授权链接');
-  await shell.openExternal(start.verification_url);
-  return new Promise((resolve, reject) => {
-    const child = spawn(larkCliPath(), ['auth', 'login', '--device-code', start.device_code], { stdio: 'ignore', windowsHide: true });
-    child.on('exit', code => (code === 0 ? resolve() : reject(new Error('飞书授权没有完成'))));
-    child.on('error', reject);
-  });
-}
-
-// First-time setup: `lark-cli config init --new` creates the user's own CLI app in the browser.
-// It blocks until the user finishes; the verification URL is taken from its output and opened.
-function configure() {
-  return new Promise((resolve, reject) => {
-    const child = spawn(larkCliPath(), ['config', 'init', '--new'], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
-    let opened = false;
-    const watch = chunk => {
-      const url = String(chunk).match(/https:\/\/\S+/)?.[0];
-      if (url && !opened) {
-        opened = true;
-        shell.openExternal(url.replace(/[)"'，。]+$/, ''));
-      }
+    win.setMenuBarVisibility(false);
+    let done = false;
+    let caught = false; // will-redirect and did-navigate can both see the same redirect
+    const finish = (err, ok) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (!win.isDestroyed()) win.close();
+      if (err) reject(err);
+      else resolve(ok);
     };
-    child.stdout.on('data', watch);
-    child.stderr.on('data', watch);
-    child.on('error', reject);
-    child.on('exit', code => (code === 0 ? resolve() : reject(new Error('没有完成 lark-cli 配置'))));
+    const timer = setTimeout(() => finish(new Error('飞书授权超时了')), AUTH_TIMEOUT_MS);
+    const catchRedirect = (event, target) => {
+      if (caught || !target.startsWith(redirectUri)) return;
+      caught = true;
+      event.preventDefault();
+      const params = new URL(target).searchParams;
+      if (params.get('state') !== state) return finish(new Error('飞书授权的校验信息不匹配，请重试'));
+      const code = params.get('code');
+      if (!code) return finish(null, false); // e.g. error=access_denied
+      brain.feishuToken(cfg, code).then(t => {
+        saveToken(t);
+        primaryCalendarId = null;
+        finish(null, true);
+      }, err => finish(err));
+    };
+    win.webContents.on('will-redirect', (e, target) => catchRedirect(e, target));
+    win.webContents.on('will-navigate', (e, target) => catchRedirect(e, target));
+    win.webContents.on('did-navigate', (e, target) => catchRedirect(e, target));
+    win.on('closed', () => finish(null, false));
+    win.loadURL(url);
   });
 }
 
 module.exports = {
-  run, isAction, authorize, configure, NeedsAuthError, NeedsConfigError, SCOPES, formatAgenda, formatTasks,
+  run, isAction, authorize, isAuthorized, clearToken, NeedsAuthError, formatAgenda, formatTasks,
 };

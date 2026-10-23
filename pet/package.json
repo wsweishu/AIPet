@@ -1,7 +1,7 @@
 {
   "name": "aipet-fatfish",
   "productName": "AIPet 肥鱼",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "开源 AI 桌宠：一条住在桌面上的蓝色大肥鱼，大脑是飞书妙搭里的豆包",
   "main": "src/main.js",
   "license": "MIT",

@@ -127,4 +127,33 @@ async function logout() {
   await miaodaSession().clearStorageData();
 }
 
-module.exports = { plan, chat, whoami, login, logout };
+// ---- Feishu OAuth via the bridge, which holds the Feishu app secret (login mode only) ----
+
+async function feishuCall(cfg, path, init) {
+  if (!cfg.baseUrl) throw new Error('还没配置妙搭地址，右键肥鱼 → 设置');
+  if (cfg.mode !== 'login') throw new Error('飞书授权需要先用「飞书登录」模式登录肥鱼，右键肥鱼 → 设置');
+  const res = await request(cfg, `feishu/${path}`, init);
+  if (res.status === 400) throw new Error((await res.json().catch(() => ({}))).message || '飞书授权失败');
+  await checkResponse(cfg, res);
+  return res.json();
+}
+
+const postJson = body => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+// { url, redirectUri }
+function feishuAuthorizeUrl(cfg, state) {
+  return feishuCall(cfg, `authorize-url?state=${encodeURIComponent(state)}`, { method: 'GET', headers: {} });
+}
+
+// { accessToken, expiresIn, refreshToken, refreshExpiresIn, scope }
+function feishuToken(cfg, code) {
+  return feishuCall(cfg, 'token', postJson({ code }));
+}
+
+function feishuRefresh(cfg, refreshToken) {
+  return feishuCall(cfg, 'refresh', postJson({ refreshToken }));
+}
+
+module.exports = {
+  plan, chat, whoami, login, logout, feishuAuthorizeUrl, feishuToken, feishuRefresh, PARTITION,
+};
