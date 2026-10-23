@@ -29,7 +29,7 @@
 
 **同事**：
 1. 打开妙搭应用，用飞书登录，点「领取肥鱼」，拿到下载链接和安装步骤。
-2. 下载安装（[Releases](https://github.com/wsweishu/AIPet/releases)，有 Apple 芯片 Mac 和 64 位 Windows 两个版本）。应用没有签名：Mac 第一次打开要右键选「打开」；Windows 弹出「Windows 已保护你的电脑」时点「更多信息 → 仍要运行」，肥鱼在右下角托盘里。
+2. 下载安装（[Releases](https://github.com/wsweishu/AIPet/releases)，有 Apple 芯片 Mac 和 64 位 Windows 两个版本）。应用没有经过 Apple 公证：Mac 第一次双击会提示「无法验证开发者」，点「完成」，再到「系统设置 → 隐私与安全性」底部点「仍要打开」；Windows 弹出「Windows 已保护你的电脑」时点「更多信息 → 仍要运行」，肥鱼在右下角托盘里。
 3. 在肥鱼的设置里选「飞书登录」，填入领取页上显示的妙搭地址，完成飞书登录。不需要 API Key。
 4. 第一次问「今天有什么会」时，肥鱼会弹出飞书授权页，点「授权」即可（只读日历和待办）。不需要安装 lark-cli。
 

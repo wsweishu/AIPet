@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "selftest": "AIPET_SELFTEST=1 electron .",
-    "package:mac": "electron-packager . \"AIPet 肥鱼\" --platform=darwin --arch=arm64 --out=dist --overwrite --icon=assets/icon.icns --app-bundle-id=dev.aipet.fatfish --ignore=^/dist",
+    "package:mac": "electron-packager . \"AIPet 肥鱼\" --platform=darwin --arch=arm64 --out=dist --overwrite --icon=assets/icon.icns --app-bundle-id=dev.aipet.fatfish --ignore=^/dist && codesign --force --deep --sign - \"dist/AIPet 肥鱼-darwin-arm64/AIPet 肥鱼.app\"",
     "package:win": "electron-packager . \"AIPet 肥鱼\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico --executable-name=AIPet --ignore=^/dist --win32metadata.CompanyName=AIPet --win32metadata.FileDescription=\"AIPet 肥鱼\" --win32metadata.ProductName=\"AIPet 肥鱼\"",
     "package": "npm run package:mac"
   },

@@ -64,7 +64,7 @@ AIPET_SELFTEST=1 AIPET_USER_DATA=/tmp/aipet-test AIPET_CONFIG_FILE=../.aipet/key
 
 - 妙搭网关有时会把流式回复攒齐了一次性发出，所以界面统一用打字机效果显示
 - 首字大约 3–6 秒
-- 未签名的 .app 拷到别的电脑上会被 macOS 拦，需要右键「打开」一次；Windows 会弹「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」
+- .app 只做了临时签名（打包脚本里的 `codesign --sign -`），没有 Apple 公证。从网上下载后，第一次双击会提示「无法验证开发者」，点「完成」，再到「系统设置 → 隐私与安全性」底部点「仍要打开」。不做这步签名的话，macOS 会直接报「已损坏」；Windows 会弹「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」
 - Windows 上肥鱼不占任务栏，右下角托盘图标右键可以打开设置或退出
 
 ## 形象与版权
